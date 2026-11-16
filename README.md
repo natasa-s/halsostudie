@@ -3,7 +3,7 @@
 Analys av data från en hälsostudie (800 deltagare) i Python och Jupyter Notebook.
 
 ## Python-version
-Python 3.14.10   <-- replace with the output of `python --version`
+Python 3.14.10
 
 ## Installation
 python -m venv .venv
