@@ -12,4 +12,4 @@ python -m pip install -r requirements.txt
 
 ## Innehåll
 - `data/health_study_dataset.csv` – datasetet
-- `del1.ipynb` – Del 1: Grundläggande analys och statistik
+- `report_del1.ipynb` – Del 1: Grundläggande analys och statistik
