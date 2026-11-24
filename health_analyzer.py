@@ -26,15 +26,21 @@ class HealthAnalyzer:
             print(f"Värden i {column}: {sorted(self.df[column].unique().tolist())}")
 
     def add_bmi(self):
-        """Lägger till kolumnen bmi (vikt i kg / längd i meter i kvadrat)."""
+        """
+        Lägger till kolumnen bmi (vikt i kg / längd i meter i kvadrat).
+        """
         self.df["bmi"] = self.df["weight"] / (self.df["height"] / 100) ** 2
 
     def add_smoker_yes(self):
-        """Lägger till kolumnen smoker_yes (1 = rökare, 0 = icke-rökare)."""
+        """
+        Lägger till kolumnen smoker_yes (1 = rökare, 0 = icke-rökare).
+        """
         self.df["smoker_yes"] = (self.df["smoker"] == "Yes").astype(int)
 
     def add_sex_male(self):
-        """Lägger till kolumnen sex_male (1 = man, 0 = kvinna)."""
+        """
+        Lägger till kolumnen sex_male (1 = man, 0 = kvinna).
+        """
         self.df["sex_male"] = (self.df["sex"] == "M").astype(int)
 
     def fit_linear_regression(self, predictors, target="systolic_bp"):
@@ -59,7 +65,9 @@ class HealthAnalyzer:
         }
 
     def plot_fit(self, predictor, result, target="systolic_bp"):
-        """Ritar datan som punter med den anpassade regressionslinjen."""
+        """
+        Ritar datan som punter med den anpassade regressionslinjen.
+        """
         x = self.df[predictor].to_numpy()
         order = np.argsort(x)
 
@@ -73,11 +81,53 @@ class HealthAnalyzer:
         plt.show()
 
     def plot_residuals(self, result):
-        """Ritar residualer mot anpassade värden för att kontrollera modellen."""
+        """
+        Ritar residualer mot anpassade värden för att kontrollera modellen.
+        """
         fig, ax = plt.subplots()
         ax.scatter(result["y_hat"], result["residuals"], alpha=0.5)
         ax.axhline(0, color="red", linestyle="--")
         ax.set_title("Residualdiagram")
         ax.set_xlabel("Anpassat värde (mmHg)")
         ax.set_ylabel("Residual (mmHg)")
+        plt.show()
+
+    def bootstrap_coefficients(self, predictors, target="systolic_bp", n_bootstrap=2000):
+        """
+        Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
+        Returnerar DataFrame med koefficient, nedre och övre gräns för varje variabel.
+        """
+        X = self.df[predictors].to_numpy()
+        y = self.df[target].to_numpy()
+        n = len(y)
+
+        boot_coefficients = np.empty((n_bootstrap, len(predictors)))
+        for i in range(n_bootstrap):
+            rows = np.random.choice(n, size=n, replace=True)
+            boot_coefficients[i] = LinearRegression().fit(X[rows], y[rows]).coef_
+
+        coefficients = LinearRegression().fit(X, y).coef_
+        lower, upper = np.percentile(boot_coefficients, [2.5, 97.5], axis=0)
+
+        return pd.DataFrame(
+            {"Koefficient": coefficients, "Nedre gräns": lower, "Övre gräns": upper},
+            index=predictors
+        )
+
+    def plot_coefficients(self, table, labels=None):
+        """
+        Ritar koefficienterna med konfidensintervall och en linje vid noll.
+        """
+        positions = np.arange(len(table))
+        lower_errors = (table["Koefficient"] - table["Nedre gräns"]).to_numpy()
+        upper_errors = (table["Övre gräns"] - table["Koefficient"]).to_numpy()
+
+        fig, ax = plt.subplots()
+        ax.errorbar(table["Koefficient"].to_numpy(), positions, xerr=[lower_errors, upper_errors], fmt="o", capsize=6)
+        ax.axvline(0, color="black", linestyle="--", linewidth=1)
+        ax.set_yticks(positions)
+        ax.set_yticklabels(labels if labels is not None else table.index)
+        ax.invert_yaxis()
+        ax.set_title("Regressionskoefficienter med 95 %-iga konfidensintervall")
+        ax.set_xlabel("Förändring i systoliskt blodtryck (mmHg) per enhet")
         plt.show()
