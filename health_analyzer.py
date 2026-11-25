@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
+
 class HealthAnalyzer:
-    """
-    Samlar analyser och grafer för hälsostudiens dataset.
+    """Samlar analyser och grafer för hälsostudiens dataset.
 
     Parametrar:
         csv_path: sökväg till CSV-filen med datan.
@@ -20,47 +20,49 @@ class HealthAnalyzer:
     # --- Dataförberedelse ---
 
     def check_data(self):
-        """Skriver ut kontroll av saknade värden, dubletter och kategorier."""
+        """Skriver ut kontroll av saknade värden, dubbletter och kategorier."""
+        duplicated_ids = self.df["id"].duplicated().sum()
+        duplicated_rows = self.df.drop(columns="id").duplicated().sum()
+
         print(f"Antal rader och kolumner: {self.df.shape}")
         print(f"Saknade värden: {self.df.isna().sum().sum()}")
-        print(f"Antal dubbletter av id: {self.df["id"].duplicated().sum()}")
-        print(f"Antal dubbletter av rader (exklusive id): {self.df.drop(columns="id").duplicated().sum()}")
+        print(f"Antal dubbletter av id: {duplicated_ids}")
+        print(f"Antal dubbletter av rader (exklusive id): {duplicated_rows}")
         for column in ["sex", "smoker", "disease"]:
-            print(f"Värden i {column}: {sorted(self.df[column].unique().tolist())}")
+            values = sorted(self.df[column].unique().tolist())
+            print(f"Värden i {column}: {values}")
 
     def add_bmi(self):
-        """
-        Lägger till kolumnen bmi (vikt i kg / längd i meter i kvadrat).
-        """
+        """Lägger till kolumnen bmi (vikt i kg / längd i meter i kvadrat)."""
         self.df["bmi"] = self.df["weight"] / (self.df["height"] / 100) ** 2
 
     def add_smoker_yes(self):
-        """
-        Lägger till kolumnen smoker_yes (1 = rökare, 0 = icke-rökare).
-        """
+        """Lägger till kolumnen smoker_yes (1 = rökare, 0 = icke-rökare)."""
         self.df["smoker_yes"] = (self.df["smoker"] == "Yes").astype(int)
 
     def add_sex_male(self):
-        """
-        Lägger till kolumnen sex_male (1 = man, 0 = kvinna).
-        """
+        """Lägger till kolumnen sex_male (1 = man, 0 = kvinna)."""
         self.df["sex_male"] = (self.df["sex"] == "M").astype(int)
 
     # --- Analyser från del 1 ---
 
     def confidence_interval_normal(self, column="systolic_bp", z=1.96):
-        """
-        Beräknar ett 95 %-igt konfidensintervall för medelvärdet med normalapproximation.
-        Returnerar tuple med nedre och övre gräns.
+        """Beräknar ett 95 %-igt konfidensintervall för medelvärdet med normalapproximation.
+        
+        Returnerar:
+            En tuple med nedre och övre gräns.
         """
         values = self.df[column].to_numpy()
         standard_error = values.std(ddof=1) / np.sqrt(len(values))
         return values.mean() - z * standard_error, values.mean() + z * standard_error
 
     def confidence_interval_bootstrap(self, column="systolic_bp", n_bootstrap=10_000):
-        """
-        Beräknar ett 95 %-igt konfidensintervall för medelvärdet bed bootstrap.
-        Returnerar tuple med nedre och övre gräns (percentilerna 2,5 och 97,5).
+        """Beräknar ett 95 %-igt konfidensintervall för medelvärdet med bootstrap.
+        
+        Slumpfröet sätts utanför metoden.
+
+        Returnerar:
+            En tuple med nedre och övre gräns (percentilerna 2,5 och 97,5).
         """
         values = self.df[column].to_numpy()
         bootstrap_means = np.empty(n_bootstrap)
@@ -70,9 +72,10 @@ class HealthAnalyzer:
         return lower, upper
 
     def welch_test(self, target="systolic_bp"):
-        """
-        Ensidigt Welch t-test av H1: rökare har högre medelvärde än icke-rökare.
-        Returnerar dictionary med difference, standard_error, t, dof och p_value.
+        """Ensidigt Welch t-test av H1: rökare har högre medelvärde än icke-rökare.
+        
+        Returnerar:
+            Dictionary med difference, standard_error, t, dof och p_value.
         """
         smokers = self.df.loc[self.df["smoker"] == "Yes", target].to_numpy()
         nonsmokers = self.df.loc[self.df["smoker"] == "No", target].to_numpy()
@@ -96,9 +99,14 @@ class HealthAnalyzer:
     # --- Regression ---
 
     def fit_linear_regression(self, predictors, target="systolic_bp"):
-        """
-        Anpassar en linjär regression med scikit-learn.
-        Returnerar dictionary med intercept, coefficients, y_hat, residuals och r2.
+        """Anpassar en linjär regression med scikit-learn.
+        
+        Parametrar:
+            predictors: lista med namn på förklarande variabler.
+            target: variabeln som ska förklaras.
+
+        Returnerar:
+            Dictionary med intercept, coefficients, y_hat, residuals och r2.
         """
         X = self.df[predictors].to_numpy()
         y = self.df[target].to_numpy()
@@ -117,9 +125,12 @@ class HealthAnalyzer:
         }
 
     def bootstrap_coefficients(self, predictors, target="systolic_bp", n_bootstrap=2000):
-        """
-        Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
-        Returnerar DataFrame med koefficient, nedre och övre gräns för varje variabel.
+        """Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
+        
+        Hela rader dras om med återläggning. Slumpfröet sätts utanför metoden.
+
+        Returnerar:
+            DataFrame med koefficient, nedre och övre gräns för varje variabel.
         """
         X = self.df[predictors].to_numpy()
         y = self.df[target].to_numpy()
@@ -141,9 +152,7 @@ class HealthAnalyzer:
     # --- Grafer ---
 
     def plot_fit(self, predictor, result, target="systolic_bp"):
-        """
-        Ritar datan som punter med den anpassade regressionslinjen.
-        """
+        """Ritar datan som punkter med den anpassade regressionslinjen."""
         x = self.df[predictor].to_numpy()
         order = np.argsort(x)
 
@@ -157,21 +166,17 @@ class HealthAnalyzer:
         plt.show()
 
     def plot_residuals(self, result):
-        """
-        Ritar residualer mot anpassade värden för att kontrollera modellen.
-        """
+        """Ritar residualer mot förutsagda värden för att kontrollera modellen."""
         fig, ax = plt.subplots()
         ax.scatter(result["y_hat"], result["residuals"], alpha=0.5)
         ax.axhline(0, color="red", linestyle="--")
         ax.set_title("Residualdiagram")
-        ax.set_xlabel("Anpassat värde (mmHg)")
-        ax.set_ylabel("Residual (mmHg)")
+        ax.set_xlabel("Förutsagt värde, ŷ (mmHg)")
+        ax.set_ylabel("Residual, y − ŷ (mmHg)")
         plt.show()
 
     def plot_coefficients(self, table, labels=None):
-        """
-        Ritar koefficienterna med konfidensintervall och en linje vid noll.
-        """
+        """Ritar koefficienterna med konfidensintervall och en linje vid noll."""
         positions = np.arange(len(table))
         lower_errors = (table["Koefficient"] - table["Nedre gräns"]).to_numpy()
         upper_errors = (table["Övre gräns"] - table["Koefficient"]).to_numpy()
