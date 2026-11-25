@@ -124,6 +124,17 @@ class HealthAnalyzer:
             "r2": r2
         }
 
+    def solve_least_squares(self, predictors, target="systolic_bp"):
+        """Löser minsta kvadrat-problemet direkt med numpy (linjär algebra).
+        
+        Returnerar:
+            Vektor med intercept först, följt av en koefficient per variabel.
+        """
+        X = np.column_stack([np.ones(len(self.df)), self.df[predictors].to_numpy()])
+        y = self.df[target].to_numpy()
+        b, *_ = np.linalg.lstsq(X, y, rcond=None)
+        return b
+
     def bootstrap_coefficients(self, predictors, target="systolic_bp", n_bootstrap=2000):
         """Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
         
@@ -151,6 +162,22 @@ class HealthAnalyzer:
 
     # --- Grafer ---
 
+    def set_plot_style(self):
+        """Sätter gemensamma inställningar för alla grafer."""
+        plt.rcParams.update({
+            "figure.figsize": (8, 5),
+            "figure.constrained_layout.use": True,
+            "axes.titlesize": 16,
+            "axes.labelsize": 12,
+            "xtick.labelsize": 11,
+            "ytick.labelsize": 11,
+            "legend.fontsize": 11,
+            "axes.grid": True,
+            "grid.alpha": 0.3,
+            "axes.axisbelow": True,
+            "axes.prop_cycle": plt.cycler(color=["royalblue", "darkorange", "seagreen"]),
+        })
+
     def plot_fit(self, predictor, result, target="systolic_bp"):
         """Ritar datan som punkter med den anpassade regressionslinjen."""
         x = self.df[predictor].to_numpy()
@@ -165,12 +192,12 @@ class HealthAnalyzer:
         ax.legend()
         plt.show()
 
-    def plot_residuals(self, result):
+    def plot_residuals(self, result, title="Residualdiagram"):
         """Ritar residualer mot förutsagda värden för att kontrollera modellen."""
         fig, ax = plt.subplots()
         ax.scatter(result["y_hat"], result["residuals"], alpha=0.5)
         ax.axhline(0, color="red", linestyle="--")
-        ax.set_title("Residualdiagram")
+        ax.set_title(title)
         ax.set_xlabel("Förutsagt värde, ŷ (mmHg)")
         ax.set_ylabel("Residual, y − ŷ (mmHg)")
         plt.show()
