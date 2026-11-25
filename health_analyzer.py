@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 from sklearn.linear_model import LinearRegression
 
 class HealthAnalyzer:
@@ -15,6 +16,8 @@ class HealthAnalyzer:
 
     def __init__(self, csv_path):
         self.df = pd.read_csv(csv_path)
+
+    # --- Dataförberedelse ---
 
     def check_data(self):
         """Skriver ut kontroll av saknade värden, dubletter och kategorier."""
@@ -43,6 +46,55 @@ class HealthAnalyzer:
         """
         self.df["sex_male"] = (self.df["sex"] == "M").astype(int)
 
+    # --- Analyser från del 1 ---
+
+    def confidence_interval_normal(self, column="systolic_bp", z=1.96):
+        """
+        Beräknar ett 95 %-igt konfidensintervall för medelvärdet med normalapproximation.
+        Returnerar tuple med nedre och övre gräns.
+        """
+        values = self.df[column].to_numpy()
+        standard_error = values.std(ddof=1) / np.sqrt(len(values))
+        return values.mean() - z * standard_error, values.mean() + z * standard_error
+
+    def confidence_interval_bootstrap(self, column="systolic_bp", n_bootstrap=10_000):
+        """
+        Beräknar ett 95 %-igt konfidensintervall för medelvärdet bed bootstrap.
+        Returnerar tuple med nedre och övre gräns (percentilerna 2,5 och 97,5).
+        """
+        values = self.df[column].to_numpy()
+        bootstrap_means = np.empty(n_bootstrap)
+        for i in range(n_bootstrap):
+            bootstrap_means[i] = np.random.choice(values, size=len(values), replace=True).mean()
+        lower, upper = np.percentile(bootstrap_means, [2.5, 97.5])
+        return lower, upper
+
+    def welch_test(self, target="systolic_bp"):
+        """
+        Ensidigt Welch t-test av H1: rökare har högre medelvärde än icke-rökare.
+        Returnerar dictionary med difference, standard_error, t, dof och p_value.
+        """
+        smokers = self.df.loc[self.df["smoker"] == "Yes", target].to_numpy()
+        nonsmokers = self.df.loc[self.df["smoker"] == "No", target].to_numpy()
+
+        var_smoker, var_nonsmoker = smokers.var(ddof=1), nonsmokers.var(ddof=1)
+        n_smoker, n_nonsmoker = len(smokers), len(nonsmokers)
+
+        difference = smokers.mean() - nonsmokers.mean()
+        standard_error = np.sqrt(var_smoker / n_smoker + var_nonsmoker / n_nonsmoker)
+        t = difference / standard_error
+
+        # Welch-approximation av frihetsgraderna
+        dof = (var_smoker / n_smoker + var_nonsmoker / n_nonsmoker) ** 2 / (
+            (var_smoker / n_smoker) ** 2 / (n_smoker - 1)
+            + (var_nonsmoker / n_nonsmoker) ** 2 / (n_nonsmoker - 1)
+        )
+        p_value = stats.t.sf(t, dof)
+
+        return {"difference": difference, "standard_error": standard_error, "t": t, "dof": dof, "p_value": p_value}
+
+    # --- Regression ---
+
     def fit_linear_regression(self, predictors, target="systolic_bp"):
         """
         Anpassar en linjär regression med scikit-learn.
@@ -63,6 +115,30 @@ class HealthAnalyzer:
             "residuals": residuals,
             "r2": r2
         }
+
+    def bootstrap_coefficients(self, predictors, target="systolic_bp", n_bootstrap=2000):
+        """
+        Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
+        Returnerar DataFrame med koefficient, nedre och övre gräns för varje variabel.
+        """
+        X = self.df[predictors].to_numpy()
+        y = self.df[target].to_numpy()
+        n = len(y)
+
+        boot_coefficients = np.empty((n_bootstrap, len(predictors)))
+        for i in range(n_bootstrap):
+            rows = np.random.choice(n, size=n, replace=True)
+            boot_coefficients[i] = LinearRegression().fit(X[rows], y[rows]).coef_
+
+        coefficients = LinearRegression().fit(X, y).coef_
+        lower, upper = np.percentile(boot_coefficients, [2.5, 97.5], axis=0)
+
+        return pd.DataFrame(
+            {"Koefficient": coefficients, "Nedre gräns": lower, "Övre gräns": upper},
+            index=predictors
+        )
+
+    # --- Grafer ---
 
     def plot_fit(self, predictor, result, target="systolic_bp"):
         """
@@ -91,28 +167,6 @@ class HealthAnalyzer:
         ax.set_xlabel("Anpassat värde (mmHg)")
         ax.set_ylabel("Residual (mmHg)")
         plt.show()
-
-    def bootstrap_coefficients(self, predictors, target="systolic_bp", n_bootstrap=2000):
-        """
-        Beräknar 95 %-iga bootstrapintervall för regressionskoefficienterna.
-        Returnerar DataFrame med koefficient, nedre och övre gräns för varje variabel.
-        """
-        X = self.df[predictors].to_numpy()
-        y = self.df[target].to_numpy()
-        n = len(y)
-
-        boot_coefficients = np.empty((n_bootstrap, len(predictors)))
-        for i in range(n_bootstrap):
-            rows = np.random.choice(n, size=n, replace=True)
-            boot_coefficients[i] = LinearRegression().fit(X[rows], y[rows]).coef_
-
-        coefficients = LinearRegression().fit(X, y).coef_
-        lower, upper = np.percentile(boot_coefficients, [2.5, 97.5], axis=0)
-
-        return pd.DataFrame(
-            {"Koefficient": coefficients, "Nedre gräns": lower, "Övre gräns": upper},
-            index=predictors
-        )
 
     def plot_coefficients(self, table, labels=None):
         """
