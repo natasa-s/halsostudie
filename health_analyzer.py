@@ -15,6 +15,7 @@ class HealthAnalyzer:
     """
 
     def __init__(self, csv_path):
+        """Läser in hälsostudiens dataset från en CSV-fil."""
         self.df = pd.read_csv(csv_path)
 
     # --- Dataförberedelse ---
@@ -178,7 +179,10 @@ class HealthAnalyzer:
             "axes.prop_cycle": plt.cycler(color=["royalblue", "darkorange", "seagreen"]),
         })
 
-    def plot_fit(self, predictor, result, target="systolic_bp"):
+    def plot_fit(self, predictor, result, target="systolic_bp",
+                 title="Systoliskt blodtryck mot ålder med regressionslinje",
+                 xlabel="Ålder (år)",
+                 ylabel="Systoliskt blodtryck (mmHg)"):
         """Ritar datan som punkter med den anpassade regressionslinjen."""
         x = self.df[predictor].to_numpy()
         order = np.argsort(x)
@@ -186,9 +190,9 @@ class HealthAnalyzer:
         fig, ax = plt.subplots()
         ax.scatter(x, self.df[target], alpha=0.5)
         ax.plot(x[order], result["y_hat"][order], color="red", label="Regressionslinje")
-        ax.set_title("Systoliskt blodtryck mot ålder med regressionslinje")
-        ax.set_xlabel("Ålder (år)")
-        ax.set_ylabel("Systoliskt blodtryck (mmHg)")
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
         ax.legend()
         plt.show()
 
