@@ -95,7 +95,13 @@ class HealthAnalyzer:
         )
         p_value = stats.t.sf(t, dof)
 
-        return {"difference": difference, "standard_error": standard_error, "t": t, "dof": dof, "p_value": p_value}
+        return {
+            "difference": difference,
+            "standard_error": standard_error,
+            "t": t,
+            "dof": dof,
+            "p_value": p_value
+        }
 
     # --- Regression ---
 
@@ -213,7 +219,13 @@ class HealthAnalyzer:
         upper_errors = (table["Övre gräns"] - table["Koefficient"]).to_numpy()
 
         fig, ax = plt.subplots()
-        ax.errorbar(table["Koefficient"].to_numpy(), positions, xerr=[lower_errors, upper_errors], fmt="o", capsize=6)
+        ax.errorbar(
+            table["Koefficient"].to_numpy(),
+            positions,
+            xerr=[lower_errors, upper_errors],
+            fmt="o",
+            capsize=6
+        )
         ax.axvline(0, color="black", linestyle="--", linewidth=1)
         ax.set_yticks(positions)
         ax.set_yticklabels(labels if labels is not None else table.index)
