@@ -14,16 +14,15 @@ python -m pip install -r requirements.txt
 ```
 
 ## Köra notebookarna
-Starta Jupyter och öppna notebooken (eller öppna den i VS Code):
+Starta Jupyter och öppna önskad notebook (eller öppna den i VS Code):
 ```bash
-jupyter notebook report_del1.ipynb
-jupyter notebook report_del2.ipynb
+jupyter notebook
 ```
 Kör **Restart & Run All** för att reproducera alla resultat. Datan läses med relativ sökväg (`data/health_study_dataset.csv`) och slumpfröet är satt till 42.
 
 ## Innehåll
 - `data/health_study_dataset.csv` – datasetet
 - `report_del1.ipynb` – Del 1: Grundläggande analys och statistik (branch `del1`)
-- `report_del2.ipynb`– Del 2: Linjär regression: blodtryck mot ålder och rökning (branch `del2`)
-- `health_analyzer.py` – klassen `HealthAnalyzer` (datakontroll, nya variabler, konfidensintervall, Welchs t-test, linjär regression, bootstrap av koeficienter, grafer)
+- `report_del2.ipynb` – Del 2: Linjär regression där systoliskt blodtryck analyseras utifrån ålder, BMI, rökning, kön och kolesterol (branch `del2`)
+- `health_analyzer.py` – klassen `HealthAnalyzer` (datakontroll, nya variabler, konfidensintervall, Welchs t-test, linjär regression, bootstrap av koefficienter, grafer)
 - `requirements.txt` – nödvändiga paket
